@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Whale Scanner Pro v2</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #080b10;
+    --surface: #0e1420;
+    --surface2: #141d2e;
+    --border: #1e2d45;
+    --accent: #00f5a0;
+    --accent2: #00d4ff;
+    --danger: #ff3d6b;
+    --warning: #ffb800;
+    --text: #e8edf5;
+    --muted: #4a6080;
+    --green: #00f5a0;
+    --red: #ff3d6b;
+    --long-bg: rgba(0,245,160,0.08);
+    --long-border: rgba(0,245,160,0.35);
+    --short-bg: rgba(255,61,107,0.08);
+    --short-border: rgba(255,61,107,0.35);
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  body::before {
+    content:'';
+    position:fixed; top:-50%; left:-50%; width:200%; height:200%;
+    background:
+      radial-gradient(ellipse at 20% 20%, rgba(0,245,160,0.04) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 80%, rgba(0,212,255,0.04) 0%, transparent 50%);
+    pointer-events:none; z-index:0;
+  }
+  .app { position:relative; z-index:1; max-width:480px; margin:0 auto; padding:0 0 90px; }
+
+/* HEADER */
+header {
+padding:16px 16px 12px;
+display:flex; align-items:center; justify-content:space-between;
+border-bottom:1px solid var(–border);
+position:sticky; top:0;
+background:rgba(8,11,16,0.97);
+backdrop-filter:blur(12px);
+z-index:100;
+}
+.logo { display:flex; align-items:center; gap:8px; }
+.logo-icon { width:32px; height:32px; background:linear-gradient(135deg,var(–accent),var(–accent2)); border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:16px; }
+.logo-text { font-size:18px; font-weight:800; letter-spacing:-0.5px; background:linear-gradient(90deg,var(–accent),var(–accent2)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.header-right { display:flex; gap:8px; align-items:center; }
+.refresh-btn {
+background:var(–surface2); border:1px solid var(–border); color:var(–text);
+padding:7px 12px; border-radius:8px; font-family:‘Space Mono’,monospace; font-size:10px;
+cursor:pointer; display:flex; align-items:center; gap:5px; transition:all 0.2s;
+}
+.refresh-btn:active { transform:scale(0.95); }
+.refresh-btn.spinning .icon { animation:spin 0.8s linear infinite; }
+@keyframes spin { to { transform:rotate(360deg); } }
+
+/* STATUS */
+.status-bar {
+padding:8px 16px; display:flex; gap:8px; align-items:center;
+font-family:‘Space Mono’,monospace; font-size:10px; color:var(–muted);
+border-bottom:1px solid var(–border);
+}
+.status-dot { width:6px; height:6px; border-radius:50%; background:var(–accent); animation:pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(0.8)} }
+
+/* SIGNAL DIRECTION BANNER */
+.direction-banner {
+margin:14px 16px 0;
+border-radius:14px;
+padding:14px 16px;
+display:flex;
+align-items:center;
+gap:12px;
+position:relative;
+overflow:hidden;
+transition:all 0.4s;
+}
+.direction-banner.long {
+background:var(–long-bg);
+border:1.5px solid var(–long-border);
+}
+.direction-banner.short {
+background:var(–short-bg);
+border:1.5px solid var(–short-border);
+}
+.direction-banner.neutral {
+background:rgba(255,184,0,0.06);
+border:1.5px solid rgba(255,184,0,0.25);
+}
+.direction-banner::before {
+content:’’;
+position:absolute; top:0; left:0; right:0; height:2px;
+}
+.direction-banner.long::before { background:linear-gradient(90deg,var(–green),transparent); }
+.direction-banner.short::before { background:linear-gradient(90deg,var(–red),transparent); }
+.direction-banner.neutral::before { background:linear-gradient(90deg,var(–warning),transparent); }
+
+.dir-icon { font-size:32px; flex-shrink:0; }
+.dir-info { flex:1; }
+.dir-label {
+font-size:22px; font-weight:800; letter-spacing:-0.5px;
+line-height:1;
+}
+.dir-label.long { color:var(–green); }
+.dir-label.short { color:var(–red); }
+.dir-label.neutral { color:var(–warning); }
+.dir-sub { font-size:11px; color:var(–muted); font-family:‘Space Mono’,monospace; margin-top:4px; }
+.dir-confidence {
+text-align:right;
+}
+.conf-val { font-size:28px; font-weight:800; font-family:‘Space Mono’,monospace; }
+.conf-val.long { color:var(–green); }
+.conf-val.short { color:var(–red); }
+.conf-label { font-size:9px; color:var(–muted); font-family:‘Space Mono’,monospace; letter-spacing:1px; }
+
+/* LEVERAGE */
+.leverage-row {
+display:flex; gap:6px; margin-top:10px;
+}
+.lev-chip {
+padding:4px 10px; border-radius:20px;
+font-family:‘Space Mono’,monospace; font-size:11px; font-weight:700;
+border:1px solid var(–border); color:var(–muted);
+transition:all 0.2s;
+}
+.lev-chip.recommended {
+background:rgba(0,245,160,0.15);
+border-color:rgba(0,245,160,0.5);
+color:var(–green);
+}
+.lev-chip.recommended.short-rec {
+background:rgba(255,61,107,0.15);
+border-color:rgba(255,61,107,0.5);
+color:var(–red);
+}
+
+/* COIN HEADER */
+.coin-header {
+margin:10px 16px 0;
+background:var(–surface);
+border:1px solid var(–border);
+border-radius:14px;
+padding:14px;
+}
+.ch-top { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px; }
+.ch-name { font-size:26px; font-weight:800; letter-spacing:-1px; }
+.ch-pair { font-size:11px; color:var(–muted); font-family:‘Space Mono’,monospace; margin-top:2px; }
+.ch-price { text-align:right; }
+.ch-price-val { font-size:20px; font-weight:700; font-family:‘Space Mono’,monospace; }
+.ch-change {
+font-size:12px; font-weight:700; font-family:‘Space Mono’,monospace;
+padding:3px 8px; border-radius:6px; margin-top:4px; display:inline-block;
+}
+.ch-change.up { background:rgba(0,245,160,0.12); color:var(–green); }
+.ch-change.down { background:rgba(255,61,107,0.12); color:var(–red); }
+
+/* INDICATORS GRID */
+.indicators {
+display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; margin-bottom:10px;
+}
+.ind-item {
+background:rgba(255,255,255,0.03); border-radius:10px; padding:8px; text-align:center;
+}
+.ind-label { font-size:9px; color:var(–muted); font-family:‘Space Mono’,monospace; letter-spacing:0.5px; }
+.ind-val { font-size:13px; font-weight:700; margin-top:3px; font-family:‘Space Mono’,monospace; }
+
+/* SIGNAL BREAKDOWN */
+.signal-breakdown {
+margin:10px 16px 0;
+background:var(–surface);
+border:1px solid var(–border);
+border-radius:14px;
+padding:14px;
+}
+.sb-title { font-size:10px; font-family:‘Space Mono’,monospace; color:var(–muted); letter-spacing:1.5px; margin-bottom:10px; }
+.sb-row {
+display:flex; justify-content:space-between; align-items:center;
+padding:7px 0; border-bottom:1px solid rgba(255,255,255,0.04);
+}
+.sb-row:last-child { border-bottom:none; }
+.sb-key { font-size:12px; color:var(–muted); font-family:‘Space Mono’,monospace; }
+.sb-val { font-size:12px; font-weight:700; font-family:‘Space Mono’,monospace; display:flex; align-items:center; gap:6px; }
+.sb-indicator {
+width:8px; height:8px; border-radius:50%;
+}
+.sb-indicator.bull { background:var(–green); box-shadow:0 0 6px var(–green); }
+.sb-indicator.bear { background:var(–red); box-shadow:0 0 6px var(–red); }
+.sb-indicator.neutral { background:var(–warning); }
+
+/* TRADE PLAN */
+.trade-plan {
+margin:10px 16px 0;
+border-radius:14px;
+padding:14px;
+}
+.trade-plan.long-plan {
+background:var(–long-bg); border:1px solid var(–long-border);
+}
+.trade-plan.short-plan {
+background:var(–short-bg); border:1px solid var(–short-border);
+}
+.tp-title { font-size:10px; font-family:‘Space Mono’,monospace; color:var(–muted); letter-spacing:1.5px; margin-bottom:10px; }
+.tp-row {
+display:flex; justify-content:space-between; align-items:center;
+padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.06);
+}
+.tp-row:last-child { border-bottom:none; }
+.tp-key { font-size:11px; color:var(–muted); font-family:‘Space Mono’,monospace; }
+.tp-val { font-size:14px; font-weight:800; font-family:‘Space Mono’,monospace; }
+.tp-val.green { color:var(–green); }
+.tp-val.red { color:var(–red); }
+.tp-val.yellow { color:var(–warning); }
+.tp-val.white { color:var(–text); }
+
+/* NEXT COINS */
+.section-title {
+padding:14px 16px 8px;
+font-size:10px; font-family:‘Space Mono’,monospace;
+color:var(–muted); letter-spacing:2px; text-transform:uppercase;
+}
+.coin-list { padding:0 16px; display:flex; flex-direction:column; gap:8px; }
+.coin-card {
+background:var(–surface); border:1px solid var(–border);
+border-radius:14px; padding:12px;
+display:flex; align-items:center; gap:10px;
+cursor:pointer; transition:all 0.2s;
+position:relative; overflow:hidden;
+}
+.coin-card:active { transform:scale(0.98); }
+.coin-card.long-card { border-color:rgba(0,245,160,0.2); }
+.coin-card.short-card { border-color:rgba(255,61,107,0.2); }
+
+.card-dir {
+width:36px; height:36px; border-radius:10px;
+display:flex; align-items:center; justify-content:center;
+font-size:16px; font-weight:800; flex-shrink:0;
+font-family:‘Space Mono’,monospace;
+}
+.card-dir.long { background:rgba(0,245,160,0.12); color:var(–green); }
+.card-dir.short { background:rgba(255,61,107,0.12); color:var(–red); }
+.card-dir.neutral { background:rgba(255,184,0,0.12); color:var(–warning); }
+
+.card-info { flex:1; min-width:0; }
+.card-symbol { font-size:16px; font-weight:800; letter-spacing:-0.5px; }
+.card-meta { font-size:10px; color:var(–muted); font-family:‘Space Mono’,monospace; margin-top:1px; }
+.card-bar { display:flex; align-items:center; gap:6px; margin-top:5px; }
+.bar-track { flex:1; height:3px; background:var(–border); border-radius:2px; overflow:hidden; }
+.bar-fill { height:100%; border-radius:2px; transition:width 1s ease; }
+.bar-fill.long-fill { background:linear-gradient(90deg,var(–accent2),var(–accent)); }
+.bar-fill.short-fill { background:linear-gradient(90deg,var(–danger),#ff6b8a); }
+.bar-score { font-size:9px; color:var(–muted); font-family:‘Space Mono’,monospace; }
+
+.card-right { text-align:right; }
+.card-change { font-size:15px; font-weight:700; font-family:‘Space Mono’,monospace; }
+.card-lev { font-size:10px; font-family:‘Space Mono’,monospace; margin-top:3px; }
+
+/* WHALE ALERT */
+.whale-alert {
+margin:10px 16px 0;
+background:rgba(255,184,0,0.06); border:1px solid rgba(255,184,0,0.2);
+border-radius:12px; padding:12px;
+display:none; align-items:flex-start; gap:10px;
+}
+.whale-text { font-size:12px; line-height:1.6; }
+.whale-text strong { color:var(–warning); }
+
+/* FILTER TABS */
+.filter-tabs {
+display:flex; gap:6px; padding:14px 16px 8px;
+overflow-x:auto; scrollbar-width:none;
+}
+.filter-tabs::-webkit-scrollbar { display:none; }
+.tab {
+padding:6px 14px; border-radius:20px;
+border:1px solid var(–border); background:var(–surface);
+color:var(–muted); font-family:‘Space Mono’,monospace; font-size:10px;
+cursor:pointer; white-space:nowrap; transition:all 0.2s; letter-spacing:0.5px;
+}
+.tab.active { background:rgba(0,245,160,0.10); border-color:rgba(0,245,160,0.35); color:var(–accent); }
+
+/* LOADING */
+.loading-screen {
+position:fixed; inset:0; background:var(–bg);
+display:flex; flex-direction:column; align-items:center; justify-content:center;
+z-index:999; gap:16px;
+}
+.loading-screen.hidden { display:none; }
+.loader-ring {
+width:56px; height:56px;
+border:3px solid var(–border); border-top-color:var(–accent);
+border-radius:50%; animation:spin 0.8s linear infinite;
+}
+.loading-text { font-family:‘Space Mono’,monospace; font-size:11px; color:var(–muted); letter-spacing:2px; }
+
+/* BOTTOM NAV */
+.bottom-nav {
+position:fixed; bottom:0; left:50%; transform:translateX(-50%);
+width:100%; max-width:480px;
+background:rgba(8,11,16,0.97); backdrop-filter:blur(20px);
+border-top:1px solid var(–border);
+display:flex; padding:10px 0 20px;
+}
+.nav-item { flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; cursor:pointer; opacity:0.4; }
+.nav-item.active { opacity:1; }
+.nav-icon { font-size:20px; }
+.nav-label { font-size:9px; font-family:‘Space Mono’,monospace; color:var(–muted); letter-spacing:0.5px; }
+.nav-item.active .nav-label { color:var(–accent); }
+
+.timestamp { font-family:‘Space Mono’,monospace; font-size:10px; color:var(–muted); }
+
+/* RISK WARNING */
+.risk-bar {
+margin:0 16px;
+background:rgba(255,61,107,0.06); border:1px solid rgba(255,61,107,0.15);
+border-radius:10px; padding:8px 12px;
+font-family:‘Space Mono’,monospace; font-size:10px; color:var(–muted);
+display:flex; align-items:center; gap:8px;
+}
+</style>
+
+</head>
+<body>
+
+<div class="loading-screen" id="loadingScreen">
+  <div class="loader-ring"></div>
+  <div class="loading-text">SCANNING MARKETS...</div>
+</div>
+
+<div class="app">
+  <header>
+    <div class="logo">
+      <div class="logo-icon">🐋</div>
+      <div class="logo-text">WHALE SCAN</div>
+    </div>
+    <div class="header-right">
+      <button class="refresh-btn" id="refreshBtn" onclick="loadData()">
+        <span class="icon">↻</span><span>LIVE</span>
+      </button>
+    </div>
+  </header>
+
+  <div class="status-bar">
+    <div class="status-dot"></div>
+    <span>DEXSCREENER FEED</span>
+    <span style="margin-left:auto;" class="timestamp" id="lastUpdate">—</span>
+  </div>
+
+  <!-- DIRECTION BANNER -->
+
+  <div class="direction-banner neutral" id="dirBanner">
+    <div class="dir-icon" id="dirIcon">⏳</div>
+    <div class="dir-info">
+      <div class="dir-label neutral" id="dirLabel">LADE...</div>
+      <div class="dir-sub" id="dirSub">Analysiere Marktdaten</div>
+      <div class="leverage-row" id="leverageRow"></div>
+    </div>
+    <div class="dir-confidence">
+      <div class="conf-val neutral" id="confVal">—</div>
+      <div class="conf-label">KONFIDENZ</div>
+    </div>
+  </div>
+
+  <!-- COIN HEADER -->
+
+  <div class="coin-header" id="coinHeader">
+    <div style="color:var(--muted); font-family:'Space Mono',monospace; font-size:11px;">Lade Coin-Daten...</div>
+  </div>
+
+  <!-- SIGNAL BREAKDOWN -->
+
+  <div class="signal-breakdown" id="signalBreakdown">
+    <div class="sb-title">📊 SIGNAL ANALYSE</div>
+    <div style="color:var(--muted); font-family:'Space Mono',monospace; font-size:11px;">Analysiere...</div>
+  </div>
+
+  <!-- TRADE PLAN -->
+
+  <div class="trade-plan long-plan" id="tradePlan">
+    <div class="tp-title" id="tpTitle">📋 TRADE PLAN</div>
+    <div id="tpRows"></div>
+  </div>
+
+  <!-- WHALE ALERT -->
+
+  <div class="whale-alert" id="whaleAlert">
+    <span style="font-size:20px;">🐋</span>
+    <div class="whale-text" id="whaleText"></div>
+  </div>
+
+  <!-- RISK -->
+
+  <div class="risk-bar" style="margin-top:10px;">
+    ⚠️ NUR ZU INFORMATIONSZWECKEN — FUTURES TRADING BIRGT HOHES VERLUSTRISIKO
+  </div>
+
+  <!-- FILTER -->
+
+  <div class="filter-tabs">
+    <div class="tab active" onclick="setFilter('all',this)">ALLE</div>
+    <div class="tab" onclick="setFilter('long',this)">🟢 LONG</div>
+    <div class="tab" onclick="setFilter('short',this)">🔴 SHORT</div>
+    <div class="tab" onclick="setFilter('volume',this)">VOLUMEN</div>
+  </div>
+
+  <!-- NEXT COINS -->
+
+  <div class="section-title">⚡ NÄCHSTE KANDIDATEN</div>
+  <div class="coin-list" id="coinList"></div>
+</div>
+
+<div class="bottom-nav">
+  <div class="nav-item active"><div class="nav-icon">📡</div><div class="nav-label">SCANNER</div></div>
+  <div class="nav-item"><div class="nav-icon">📊</div><div class="nav-label">CHART</div></div>
+  <div class="nav-item"><div class="nav-icon">⚙️</div><div class="nav-label">SETTINGS</div></div>
+</div>
+
+<script>
+let allPairs = [];
+let currentFilter = 'all';
+let activeCoin = null;
+
+// ── SIGNAL ENGINE ──────────────────────────────────────────────
+function analyzeSignal(pair) {
+  const m5   = parseFloat(pair.priceChange?.m5)  || 0;
+  const h1   = parseFloat(pair.priceChange?.h1)  || 0;
+  const h6   = parseFloat(pair.priceChange?.h6)  || 0;
+  const h24  = parseFloat(pair.priceChange?.h24) || 0;
+  const buys = pair.txns?.h1?.buys  || 0;
+  const sells= pair.txns?.h1?.sells || 0;
+  const vol  = parseFloat(pair.volume?.h24) || 0;
+  const liq  = parseFloat(pair.liquidity?.usd) || 0;
+  const price= parseFloat(pair.priceUsd) || 0;
+
+  // Buy/Sell pressure ratio
+  const total = buys + sells;
+  const buyPct = total > 0 ? (buys / total) * 100 : 50;
+
+  // Momentum: all timeframes agree?
+  const longMomentum  = m5 > 0 && h1 > 0 && h6 > 0;
+  const shortMomentum = m5 < 0 && h1 < 0 && h6 < 0;
+
+  // Volume relative strength
+  const volStrong = vol > 300000;
+  const volMedium = vol > 100000;
+
+  // Pump exhaustion (huge h24 but negative h1)
+  const pumpExhaustion = h24 > 30 && h1 < -3;
+
+  // Liquidity ok?
+  const liqOk = liq > 50000;
+
+  // ── LONG conditions ──
+  let longScore = 0;
+  let longReasons = [];
+
+  if (m5 > 2)    { longScore += 20; longReasons.push({k:'5m Momentum',v:'+'+m5.toFixed(1)+'%',bull:true}); }
+  if (h1 > 3)    { longScore += 25; longReasons.push({k:'1h Trend',v:'+'+h1.toFixed(1)+'%',bull:true}); }
+  if (h6 > 5)    { longScore += 15; longReasons.push({k:'6h Trend',v:'+'+h6.toFixed(1)+'%',bull:true}); }
+  if (buyPct > 60){ longScore += 20; longReasons.push({k:'Buy Druck',v:buyPct.toFixed(0)+'% Buys',bull:true}); }
+  if (volStrong) { longScore += 15; longReasons.push({k:'Volumen',v:'STARK',bull:true}); }
+  else if(volMedium){ longScore += 8; }
+  if (liqOk)     { longScore += 5;  }
+
+  // ── SHORT conditions ──
+  let shortScore = 0;
+  let shortReasons = [];
+
+  if (m5 < -2)    { shortScore += 20; shortReasons.push({k:'5m Momentum',v:m5.toFixed(1)+'%',bull:false}); }
+  if (h1 < -3)    { shortScore += 25; shortReasons.push({k:'1h Trend',v:h1.toFixed(1)+'%',bull:false}); }
+  if (h6 < -5)    { shortScore += 15; shortReasons.push({k:'6h Trend',v:h6.toFixed(1)+'%',bull:false}); }
+  if (buyPct < 40){ shortScore += 20; shortReasons.push({k:'Sell Druck',v:(100-buyPct).toFixed(0)+'% Sells',bull:false}); }
+  if (pumpExhaustion){ shortScore += 25; shortReasons.push({k:'Pump Erschöpfung',v:'WARNUNG',bull:false}); }
+  if (volStrong)  { shortScore += 10; }
+
+  // Always show some reasons
+  if (longReasons.length === 0) longReasons.push({k:'1h Bewegung',v:h1.toFixed(2)+'%',bull:h1>0});
+  if (shortReasons.length === 0) shortReasons.push({k:'Sell Druck',v:(100-buyPct).toFixed(0)+'%',bull:false});
+
+  // Add common rows
+  const commonRows = [
+    {k:'Buys / Sells (1h)', v:`${buys} / ${sells}`, bull: buys > sells},
+    {k:'Volumen 24h', v:'$'+formatVolume(vol), bull: volStrong},
+    {k:'Liquidität', v:'$'+formatVolume(liq), bull: liqOk},
+  ];
+
+  // Determine direction
+  let direction, confidence, reasons;
+  if (longScore > shortScore && longScore >= 40) {
+    direction = 'LONG';
+    confidence = Math.min(longScore, 95);
+    reasons = [...longReasons, ...commonRows];
+  } else if (shortScore > longScore && shortScore >= 35) {
+    direction = 'SHORT';
+    confidence = Math.min(shortScore, 95);
+    reasons = [...shortReasons, ...commonRows];
+  } else {
+    direction = 'NEUTRAL';
+    confidence = 30;
+    reasons = [...commonRows, {k:'5m / 1h / 6h', v:`${m5.toFixed(1)}% / ${h1.toFixed(1)}% / ${h6.toFixed(1)}%`, bull: h1>0}];
+  }
+
+  // Leverage recommendation
+  let leverage;
+  if (confidence >= 75) leverage = direction === 'LONG' ? ['2x','5x ✓','10x'] : ['2x','5x ✓','10x'];
+  else if (confidence >= 55) leverage = ['2x ✓','5x','10x'];
+  else leverage = ['2x ✓','5x','10x'];
+
+  const recLev = confidence >= 70 ? 1 : 0; // index of recommended leverage
+
+  // Trade plan
+  const isLong = direction === 'LONG';
+  const tp1 = isLong ? price * 1.05 : price * 0.95;
+  const tp2 = isLong ? price * 1.10 : price * 0.90;
+  const sl  = isLong ? price * 0.97 : price * 1.03;
+
+  return { direction, confidence, reasons, leverage, recLev, tp1, tp2, sl, longScore, shortScore, buyPct, m5, h1, h6, h24, buys, sells };
+}
+
+// ── RENDER TOP COIN ────────────────────────────────────────────
+function renderTopCoin(pair) {
+  activeCoin = pair;
+  const sig = analyzeSignal(pair);
+  const price = parseFloat(pair.priceUsd) || 0;
+  const isUp = sig.h1 >= 0;
+  const isLong = sig.direction === 'LONG';
+  const isShort = sig.direction === 'SHORT';
+
+  // Direction banner
+  const banner = document.getElementById('dirBanner');
+  banner.className = 'direction-banner ' + (isLong ? 'long' : isShort ? 'short' : 'neutral');
+  document.getElementById('dirIcon').textContent = isLong ? '📈' : isShort ? '📉' : '↔️';
+  document.getElementById('dirLabel').textContent = isLong ? 'LONG' : isShort ? 'SHORT' : 'NEUTRAL';
+  document.getElementById('dirLabel').className = 'dir-label ' + (isLong ? 'long' : isShort ? 'short' : 'neutral');
+  document.getElementById('dirSub').textContent = isLong
+    ? 'Kaufdruck erkannt — Einstieg prüfen'
+    : isShort ? 'Verkaufsdruck erkannt — Short prüfen'
+    : 'Kein klares Signal — abwarten';
+  document.getElementById('confVal').textContent = sig.confidence + '%';
+  document.getElementById('confVal').className = 'conf-val ' + (isLong ? 'long' : isShort ? 'short' : 'neutral');
+
+  // Leverage chips
+  const levHtml = sig.leverage.map((l, i) =>
+    `<div class="lev-chip ${i === sig.recLev ? (isShort ? 'recommended short-rec' : 'recommended') : ''}">${l}</div>`
+  ).join('');
+  document.getElementById('leverageRow').innerHTML = levHtml;
+
+  // Coin header
+  document.getElementById('coinHeader').innerHTML = `
+    <div class="ch-top">
+      <div>
+        <div class="ch-name">${pair.baseToken?.symbol || '—'}</div>
+        <div class="ch-pair">${pair.baseToken?.name || ''} · ${(pair.dexId||'DEX').toUpperCase()} · ${(pair.chainId||'').toUpperCase()}</div>
+      </div>
+      <div class="ch-price">
+        <div class="ch-price-val">$${formatPrice(price)}</div>
+        <div class="ch-change ${isUp?'up':'down'}">${isUp?'+':''}${sig.h1.toFixed(2)}% 1h</div>
+      </div>
+    </div>
+    <div class="indicators">
+      <div class="ind-item">
+        <div class="ind-label">5M</div>
+        <div class="ind-val" style="color:${sig.m5>=0?'var(--green)':'var(--red)'}">${sig.m5>=0?'+':''}${sig.m5.toFixed(1)}%</div>
+      </div>
+      <div class="ind-item">
+        <div class="ind-label">6H</div>
+        <div class="ind-val" style="color:${sig.h6>=0?'var(--green)':'var(--red)'}">${sig.h6>=0?'+':''}${sig.h6.toFixed(1)}%</div>
+      </div>
+      <div class="ind-item">
+        <div class="ind-label">24H</div>
+        <div class="ind-val" style="color:${sig.h24>=0?'var(--green)':'var(--red)'}">${sig.h24>=0?'+':''}${sig.h24.toFixed(1)}%</div>
+      </div>
+    </div>
+  `;
+
+  // Signal breakdown
+  const sbRows = sig.reasons.slice(0, 5).map(r => `
+    <div class="sb-row">
+      <span class="sb-key">${r.k}</span>
+      <span class="sb-val">
+        <div class="sb-indicator ${r.bull?'bull':'bear'}"></div>
+        ${r.v}
+      </span>
+    </div>
+  `).join('');
+  document.getElementById('signalBreakdown').innerHTML = `
+    <div class="sb-title">📊 SIGNAL ANALYSE — ${pair.baseToken?.symbol||''}</div>
+    ${sbRows}
+  `;
+
+  // Trade plan
+  const plan = document.getElementById('tradePlan');
+  plan.className = 'trade-plan ' + (isShort ? 'short-plan' : 'long-plan');
+  document.getElementById('tpTitle').textContent = (isLong ? '📈 LONG' : isShort ? '📉 SHORT' : '📋') + ' TRADE PLAN';
+  document.getElementById('tpRows').innerHTML = `
+    <div class="tp-row">
+      <span class="tp-key">EINSTIEG</span>
+      <span class="tp-val yellow">$${formatPrice(price)}</span>
+    </div>
+    <div class="tp-row">
+      <span class="tp-key">TAKE PROFIT 1 ${isLong?'(+5%)':'(-5%)'}</span>
+      <span class="tp-val green">$${formatPrice(sig.tp1)}</span>
+    </div>
+    <div class="tp-row">
+      <span class="tp-key">TAKE PROFIT 2 ${isLong?'(+10%)':'(-10%)'}</span>
+      <span class="tp-val green">$${formatPrice(sig.tp2)}</span>
+    </div>
+    <div class="tp-row">
+      <span class="tp-key">STOP LOSS ${isLong?'(-3%)':'(+3%)'}</span>
+      <span class="tp-val red">$${formatPrice(sig.sl)}</span>
+    </div>
+    <div class="tp-row">
+      <span class="tp-key">STRATEGIE</span>
+      <span class="tp-val white" style="font-size:11px;">BEI TP1 HÄLFTE SICHERN</span>
+    </div>
+  `;
+}
+
+// ── RENDER LIST ────────────────────────────────────────────────
+function renderList() {
+  let pairs = allPairs.slice(1);
+
+  if (currentFilter === 'long') {
+    pairs = pairs.filter(p => analyzeSignal(p).direction === 'LONG');
+  } else if (currentFilter === 'short') {
+    pairs = pairs.filter(p => analyzeSignal(p).direction === 'SHORT');
+  } else if (currentFilter === 'volume') {
+    pairs = [...pairs].sort((a,b) => (parseFloat(b.volume?.h24)||0) - (parseFloat(a.volume?.h24)||0));
+  }
+
+  pairs = pairs.slice(0, 7);
+
+  if (!pairs.length) {
+    document.getElementById('coinList').innerHTML = '<div style="text-align:center;padding:30px;color:var(--muted);font-family:Space Mono,monospace;font-size:11px;">Keine Signale gefunden</div>';
+    return;
+  }
+
+  document.getElementById('coinList').innerHTML = pairs.map((pair, i) => {
+    const sig = analyzeSignal(pair);
+    const change = sig.h1;
+    const isLong = sig.direction === 'LONG';
+    const isShort = sig.direction === 'SHORT';
+    const dirClass = isLong ? 'long' : isShort ? 'short' : 'neutral';
+    const dirText = isLong ? 'L' : isShort ? 'S' : '~';
+    const recLevText = sig.leverage[sig.recLev];
+
+    return `
+      <div class="coin-card ${isLong?'long-card':isShort?'short-card':''}" onclick="selectCoin('${pair.pairAddress}')">
+        <div class="card-dir ${dirClass}">${dirText}</div>
+        <div class="card-info">
+          <div class="card-symbol">${pair.baseToken?.symbol||'—'}</div>
+          <div class="card-meta">${(pair.dexId||'DEX').toUpperCase()} · $${formatVolume(pair.volume?.h24)} Vol</div>
+          <div class="card-bar">
+            <div class="bar-track">
+              <div class="bar-fill ${isShort?'short-fill':'long-fill'}" style="width:${sig.confidence}%"></div>
+            </div>
+            <span class="bar-score">${sig.confidence}%</span>
+          </div>
+        </div>
+        <div class="card-right">
+          <div class="card-change" style="color:${change>=0?'var(--green)':'var(--red)'}">${change>=0?'+':''}${change.toFixed(2)}%</div>
+          <div class="card-lev" style="color:${isShort?'var(--red)':isLong?'var(--green)':'var(--warning)'}">REC: ${recLevText}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// ── WHALE ALERT ────────────────────────────────────────────────
+function checkWhaleAlert(pairs) {
+  const mover = pairs.find(p => Math.abs(parseFloat(p.priceChange?.h1)||0) > 20);
+  const el = document.getElementById('whaleAlert');
+  if (mover) {
+    const c = parseFloat(mover.priceChange?.h1);
+    document.getElementById('whaleText').innerHTML =
+      `<strong>🐋 WHALE BEWEGUNG ERKANNT</strong> — ${mover.baseToken?.symbol} ${c>0?'+'+''}${c.toFixed(1)}% in 1h. Hohe Aktivität bei $${formatVolume(mover.volume?.h24)} Volumen.`;
+    el.style.display = 'flex';
+  } else {
+    el.style.display = 'none';
+  }
+}
+
+// ── UTILS ──────────────────────────────────────────────────────
+function formatPrice(p) {
+  p = parseFloat(p)||0;
+  if (p < 0.0001) return p.toExponential(3);
+  if (p < 1) return p.toFixed(6);
+  if (p < 100) return p.toFixed(4);
+  return p.toFixed(2);
+}
+function formatVolume(v) {
+  v = parseFloat(v)||0;
+  if (v>=1e9) return (v/1e9).toFixed(1)+'B';
+  if (v>=1e6) return (v/1e6).toFixed(1)+'M';
+  if (v>=1e3) return (v/1e3).toFixed(1)+'K';
+  return v.toFixed(0);
+}
+function calcScore(pair) {
+  let s = 0;
+  const sig = analyzeSignal(pair);
+  s = sig.confidence;
+  s += Math.min((parseFloat(pair.volume?.h24)||0) / 10000, 20);
+  s += Math.min((parseFloat(pair.liquidity?.usd)||0) / 10000, 10);
+  return Math.min(Math.round(s), 100);
+}
+function setFilter(f, el) {
+  currentFilter = f;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  renderList();
+}
+function selectCoin(address) {
+  const pair = allPairs.find(p => p.pairAddress === address);
+  if (!pair) return;
+  renderTopCoin(pair);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ── LOAD DATA ──────────────────────────────────────────────────
+async function loadData() {
+  const btn = document.getElementById('refreshBtn');
+  btn.classList.add('spinning');
+
+  try {
+    // Try trending boosts first
+    const res = await fetch('https://api.dexscreener.com/token-boosts/top/v1');
+    const boosts = await res.json();
+    const chain = boosts[0]?.chainId || 'solana';
+    const addrs = boosts.slice(0, 15).map(t => t.tokenAddress).join(',');
+
+    const res2 = await fetch(`https://api.dexscreener.com/tokens/v1/${chain}/${addrs}`);
+    const pairData = await res2.json();
+    let pairs = Array.isArray(pairData) ? pairData : [];
+
+    pairs = pairs
+      .filter(p => p.priceUsd && parseFloat(p.liquidity?.usd||0) > 30000)
+      .sort((a,b) => calcScore(b) - calcScore(a));
+
+    if (pairs.length < 3) throw new Error('too few pairs');
+
+    allPairs = pairs;
+    renderTopCoin(pairs[0]);
+    renderList();
+    checkWhaleAlert(pairs);
+    document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString('de-DE');
+
+  } catch(e) {
+    // Fallback
+    try {
+      const r = await fetch('https://api.dexscreener.com/latest/dex/search?q=SOL');
+      const d = await r.json();
+      let pairs = (d.pairs||[])
+        .filter(p => p.priceUsd && parseFloat(p.liquidity?.usd||0) > 30000)
+        .sort((a,b) => calcScore(b) - calcScore(a));
+
+      if (pairs.length > 0) {
+        allPairs = pairs;
+        renderTopCoin(pairs[0]);
+        renderList();
+        checkWhaleAlert(pairs);
+        document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString('de-DE');
+      }
+    } catch(e2) {
+      document.getElementById('dirLabel').textContent = 'FEHLER';
+    }
+  }
+
+  btn.classList.remove('spinning');
+  document.getElementById('loadingScreen').classList.add('hidden');
+}
+
+setInterval(loadData, 60000);
+loadData();
+</script>
+
+</body>
+</html>
